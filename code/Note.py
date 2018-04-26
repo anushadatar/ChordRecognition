@@ -23,10 +23,6 @@ class Note:
           what is generally standard practice (Blackman window).
           - Go to numpy directories and compare confidence scores based 
             on changing window sizes. Window type is set at line 81. 
-        - Takking a weighted average of found frequencies for windows instead
-          of blindly choosing the final value calculated. Probably involves 
-          storing all of the values in a list and then moving them around.
-          - Accounting for harmonics and large outliers in this calculation.
     
     Stretch considerations:
         - Using a training set to determine sliding parameters instead of just
@@ -62,8 +58,6 @@ class Note:
         self.confidence = -1
         # The actual note, as a string.
         self.note = ''
-
-
         ##### Existing class variables. Thanks python wave library.
         # Waveform object of existing file.
         self.waveform = wave.open(filename,'rb')
@@ -73,6 +67,7 @@ class Note:
         self.frame_rate = self.waveform.getframerate()
         # Size of sampling chunk.
         self.chunk = 2048
+        self.detect_note()
 
 
     def __str__(self):
@@ -95,16 +90,23 @@ class Note:
         """
         # TODO The range this works for is pretty limited. How to expand?
 
+        #### We want to average the peaks to find the best possible value.
+        # Create a list of the detected frequencies.
+        frequency_list = []
+        # Create a list of integers, useful to find the mode.
+        frequency_int_list = []
+        # Incorrect value facilitates debug nicely.
+        frequency = -1
+
+        #### Set up window functions and dataset.
         # Create a specific window for this process. Window should be 
         # double chunk size because values are interpolated.
         window = np.blackman(self.chunk*2)
         # Break the data into pieces in line with this window.
         data = self.waveform.readframes(self.chunk)
-        # Set the frequency to something incorrect by definition such that
-        # we can go back and debug easily.
-        frequency = -1
-
-        # Go through the dataset chunk-by-chunk
+        
+        #### Process each individual chunk.
+        # Go through the dataset chunk-by-chunk.
         while (len(data) > self.chunk * self.sample_width) and \
               (len(data) % self.chunk * self.sample_width == 0):
             # Unpack dataset by piece of the sample set.
@@ -123,10 +125,27 @@ class Note:
                             (self.chunk * 2)
             else:
                 frequency = (maximum_value * self.frame_rate)/self.chunk
+            
             # Increment location in dataset.
             data = self.waveform.readframes(self.chunk)
-
-        # Check for valid frequencies and then return.
+            if frequency > 0:
+                # Add to list. Right now filtering is literally just averaging
+                # and a basic round, so there's much TODO here.
+                frequency_list.append(frequency)
+                frequency_int_list.append(int(round(frequency)))
+        
+        
+        # TODO Thinking about the runtime of this makes me sad.
+        #### Grab the average of the peaks.
+        frequency = statistics.mode(frequency_int_list)
+        float_freq = 0
+        float_freq_count = 0
+        for i in range(len(frequency_list)):
+            if frequency_int_list[i] == frequency:
+                float_freq += frequency_list[i]
+                float_freq_count += 1
+        frequency = float_freq/float_freq_count
+            
         if frequency != -1:
             self.frequency = frequency
             return frequency
@@ -145,8 +164,19 @@ class Note:
         # TODO Implement this: For that, create a dictionary of the notes
         # and associated frequencies and do some arithmetic to determine
         # the confidence at the point.
+        
+        # Ensure we've calculated frequency, otherwise go ahead and do that.
         if (self.frequency < 0):
             self.frequency = self.detect_frequency()
+            if (self.frequency < 0):
+                print("Could not detect frequency.") 
+                return [' ', -1]
+        # Now that we know the frequency is valid, we can try to map it to
+        # a dictionary of values.
+        return ['c1', .53] 
+    
+
+
 
     def detect_note(self):
         """
@@ -157,10 +187,10 @@ class Note:
         and the second element is the confidence as a decimal.
         """
         frequency = self.detect_frequency()
-        value = note_and_confidence()
+        value = self.note_and_confidence()
         self.note = value[0]
         self.confidence = value[1]
-        return value 
+        return value
 
 
 def main():
