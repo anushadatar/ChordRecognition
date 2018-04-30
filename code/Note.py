@@ -1,5 +1,8 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
+from a440_dict import freq_mapping
+from a440_dict import freq_values
+from bisect import bisect_left
 import numpy as np
 import statistics
 import sys
@@ -67,7 +70,7 @@ class Note:
         self.frame_rate = self.waveform.getframerate()
         # Size of sampling chunk.
         self.chunk = 2048
-        self.detect_note()
+        self.value = self.detect_note()
 
 
     def __str__(self):
@@ -75,8 +78,16 @@ class Note:
         Returns value of the note for easy printing.
         """
         # TODO This should eventually return a nice string with the name
-        #      of the note and the confidence level. 
-        return str(self.frequency)
+        #      of the note and the confidence level.
+        if (self.value[0][1] == "S"):
+            return ("Note: %s# Octave: %s Confidence: %.2f" % (self.value[0][0], \
+                                                               self.value[0][2], \
+                                                               self.value[1]))
+        else:
+            return ("Note: %s Octave: %s Confidence: %.2f" % (self.value[0][0], \
+                                                              self.value[0][2], \
+                                                              self.value[1]))
+
 
     def detect_frequency(self):
         """
@@ -153,31 +164,6 @@ class Note:
             print("Frequency calculation failed.") 
             return -1
     
-    def note_and_confidence(self):
-        """
-        Detects the value of the note and confidence percentage for a given
-        frequency.
-
-        Returns an array where the first element is the note as a string and
-        the second element is the confidence as a decimal.
-        """   
-        # TODO Implement this: For that, create a dictionary of the notes
-        # and associated frequencies and do some arithmetic to determine
-        # the confidence at the point.
-        
-        # Ensure we've calculated frequency, otherwise go ahead and do that.
-        if (self.frequency < 0):
-            self.frequency = self.detect_frequency()
-            if (self.frequency < 0):
-                print("Could not detect frequency.") 
-                return [' ', -1]
-        # Now that we know the frequency is valid, we can try to map it to
-        # a dictionary of values.
-        return ['c1', .53] 
-    
-
-
-
     def detect_note(self):
         """
         Note detection and confidence calculation - leverages setup from 
@@ -187,11 +173,18 @@ class Note:
         and the second element is the confidence as a decimal.
         """
         frequency = self.detect_frequency()
-        value = self.note_and_confidence()
-        self.note = value[0]
-        self.confidence = value[1]
+        # TODO This can be O(logN) if you use binary search. I already sorted
+        #      the list and everything.
+        find_closest = lambda num,collection:min(collection,key=lambda x:abs(x-num))
+        closest_frequency = find_closest(frequency, freq_values)
+        # Returns note in the form [LETTER][N OR S][OCTAVE]
+        self.note = freq_mapping[closest_frequency]
+        # Returns confidence based on literally just division
+        # TODO There's probably a smarter way to do this. Find it.
+        self.confidence = 1 - abs((frequency - closest_frequency)/(frequency))
+        # Create data structure
+        value = [self.note, self.confidence]
         return value
-
 
 def main():
     """
