@@ -10,5 +10,9 @@ file, include a dictionary of float keys and string values of the frequencies
 and notes and also provide a sorted list of the possible frequencies.
 
 To run note recognition on a file, run:
-'$ python3 Note.py /your/file/here.wav'
+
+
+
+
+`$ python3 Note.py /your/file/here.wav'
 
