@@ -2,7 +2,8 @@
 
 from a440_dict import freq_mapping
 from a440_dict import freq_values
-from a440_train_vector import train
+from a440_train_vector import labels
+from a440_train_vector import freqs
 
 from bisect import bisect_left
 import numpy as np
@@ -37,6 +38,8 @@ class Chord:
         self.frame_rate = self.waveform.getframerate()
         # List of most common frequencies.
         self.frequency_list = self.detect_frequency()
+        self.chord = self.detect_frequency()
+       # self.chord = self.detect_chord()
         
     def __str__(self):
         """
@@ -86,17 +89,23 @@ class Chord:
             # Increment location in dataset.
             data = self.waveform.readframes(self.chunk)
             # It needs to exist and humans should be able to hear it.
-            if frequency > 0 and < 20000:
+            if frequency > 0 and frequency < 20000:
                 frequency_list.append(frequency)
                 frequency_int_list.append(int(round(frequency)))
         
         #### Grab the average of the peaks.
         chord = []
-        for i in range(4):
+        for i in range(3):
             frequency = scipy.stats.mode(frequency_int_list)
-            chord.append(int(frequency[0]))
+            chord.append(frequency[0])
             frequency_int_list = [x for x in frequency_int_list if x != chord[i]]
-                
+        
+        #### For some reason, it won't let me do this in one step. At least
+        #### it amortizes.
+        
+        for i in chord:
+            i = i[0]
+        
         print(chord)
         return chord
 
@@ -107,13 +116,24 @@ class Chord:
         # Manually copied in training data samples instead of generating
         # values for the sake of runtime. Fixing this is a prety major 
         # TODO but is not a problem until more data has been acquired.
-        
-        
-
-        return self.frequency_list
+        # TODO Add training data and training vector specs...        
+        distances = {}
+        for i in range(len(train)):
+            distances[labels[i]] = \
+                      euclidean_distance(freqs[i], self.chord_list, len(freqs[i]))
+        return distances
 
     @staticmethod
     def euclidean_distance(a, b, l):
+        """
+        Returns euclidean distance between two points in space. Exciting.
+
+        a : First list (or other iterable) with coordinate.
+        b : Second list (or other iterable) with coordinate.
+        l : The length of the list.
+
+        Returns the euclidean distance. Thanks geometry.
+        """
         dist = 0
         for i in range(l):
             dist += pow((a[i] - b[i]), 2)
@@ -130,4 +150,4 @@ def main():
 
 
 if  __name__ =='__main__':
-    mai()
+    main()
