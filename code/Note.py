@@ -2,6 +2,7 @@
 
 from a440_dict import freq_mapping
 from a440_dict import freq_values
+
 from bisect import bisect_left
 import numpy as np
 import statistics
@@ -20,30 +21,7 @@ class Note:
 
     Considering this blindly uses frequency, it is highly susceptible to 
     noise across variables such as background frequencies and instruments.
-
-    Some valuable and achievable TODOs to reduce this noise include:
-        - Evaluating different window types instead of just going with 
-          what is generally standard practice (Blackman window).
-          - Go to numpy directories and compare confidence scores based 
-            on changing window sizes. Window type is set at line 81. 
     
-    Stretch considerations:
-        - Using a training set to determine sliding parameters instead of just
-          basic statistics calculations.
-        - Filtering for various outside noises.
-    
-    Software TODOs Include:
-        - Professional documentation is always a good touch. READMEs, 
-          pointing to LaTeX, all of these things are nice to have.
-        - Object-orientedness is nice, but so is modularizability. Add in
-          some nice default arguments for things and get rid of all the 'self'
-        - Define how this fits in with chords, which is decidedly much 
-          harder.
-        - Real-time functionality would be hard, but also very cool.
-          - Need a nice, clean audio stream (microphone? microphone)
-          - A gui or something wouldn't hurt.
-        - Plotting the fft at some point would be good for the report, if 
-          not for the cool and intuitive GUI you're going to totally make.
     """
     def __init__(self, filename):
         """
@@ -61,6 +39,7 @@ class Note:
         self.confidence = -1
         # The actual note, as a string.
         self.note = ''
+
         ##### Existing class variables. Thanks python wave library.
         # Waveform object of existing file.
         self.waveform = wave.open(filename,'rb')
@@ -70,6 +49,8 @@ class Note:
         self.frame_rate = self.waveform.getframerate()
         # Size of sampling chunk.
         self.chunk = 2048
+        
+        #### Finally, perform note detection.
         self.value = self.detect_note()
 
 
@@ -77,8 +58,6 @@ class Note:
         """
         Returns value of the note for easy printing.
         """
-        # TODO This should eventually return a nice string with the name
-        #      of the note and the confidence level.
         if (self.value[0][1] == "S"):
             return ("Note: %s# Octave: %s Confidence: %.2f" % (self.value[0][0], \
                                                                self.value[0][2], \
@@ -98,8 +77,11 @@ class Note:
         Then uses quadratic interpolation to pinpoint peak.
 
         Returns frequency in Hertz (Hz)    
+        
+        This works surprisingly well for a few octaves below and above
+        middle C. It loses accuracy at frequencies which are too low due
+        to similar bins and 
         """
-        # TODO The range this works for is pretty limited. How to expand?
 
         #### We want to average the peaks to find the best possible value.
         # Create a list of the detected frequencies.
@@ -140,13 +122,10 @@ class Note:
             # Increment location in dataset.
             data = self.waveform.readframes(self.chunk)
             if frequency > 0:
-                # Add to list. Right now filtering is literally just averaging
-                # and a basic round, so there's much TODO here.
                 frequency_list.append(frequency)
                 frequency_int_list.append(int(round(frequency)))
         
         
-        # TODO Thinking about the runtime of this makes me sad.
         #### Grab the average of the peaks.
         frequency = statistics.mode(frequency_int_list)
         float_freq = 0
@@ -156,8 +135,9 @@ class Note:
                 float_freq += frequency_list[i]
                 float_freq_count += 1
         frequency = float_freq/float_freq_count
-            
-        if frequency != -1:
+        
+        # Double check it at least sort of worked and then return it.    
+        if frequency > -1:
             self.frequency = frequency
             return frequency
         else:
@@ -172,18 +152,21 @@ class Note:
         Returns an array where the first element is the note as a string
         and the second element is the confidence as a decimal.
         """
+
         frequency = self.detect_frequency()
-        # TODO This can be O(logN) if you use binary search. I already sorted
-        #      the list and everything.
         find_closest = lambda num,collection:min(collection,key=lambda x:abs(x-num))
         closest_frequency = find_closest(frequency, freq_values)
+        
         # Returns note in the form [LETTER][N OR S][OCTAVE]
         self.note = freq_mapping[closest_frequency]
+        
         # Returns confidence based on literally just division
-        # TODO There's probably a smarter way to do this. Find it.
-        self.confidence = 1 - abs((frequency - closest_frequency)/(frequency))
+        self.confidence = 100 * ( 1 - 
+                          abs((frequency - closest_frequency)/(frequency)))
+        
         # Create data structure
         value = [self.note, self.confidence]
+        
         return value
 
 def main():
