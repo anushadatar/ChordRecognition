@@ -44,19 +44,29 @@ class Chord:
         self.frame_rate = self.waveform.getframerate()
         # List of most common frequencies.
         self.frequency_list = self.detect_frequency()
-        self.chord = self.detect_chord()
-        
+        # Tuple such taht (Chord prediction, distance).
+        self.chord_prediction = self.detect_chord()
+        # Chord prediction string.
+        self.chord = self.chord_prediction[0]
+        # Error prediction float
+        self.error = self.chord_prediction[1]    
+
+
     def __str__(self):
         """
         Returns value of the note for easy printing.
         """
         # TODO Return chord and classifier
-        return self.chord
+        return ("The chord is %s with error %.2f") % (self.chord, self.error)
 
 
     def detect_frequency(self, num_notes=3):
         """
         Detects three most common frequencies in the chord. 
+        
+        num_notes : The number of notes to detct for. Defaults to three.
+
+        Returns list of top three notes with each nested in np.ndarray.
         """
         #### We average individual peaks to facilitate accurate extraction.
         # Create a list of the detected frequencies.
@@ -111,6 +121,14 @@ class Chord:
     def detect_chord(self):
         """
         Uses chord frequency list and KNN to determine value of a chord. 
+        
+        Note that this requires a set of training data and labels as 
+        specified in attached training matrix file - holds labels in 
+        one list called labels  and frequencies in a list called freqs that holds
+        corresponding sublists that hold the dominant frequencies in 
+        descending order of appearance. 
+
+        Returns tuple such that (chord name, distance from value)
         """
         distances = {}
         for i in range(len(labels)):
@@ -119,7 +137,6 @@ class Chord:
        
 
         chord = min(distances.items(), key=lambda x: x[1])
-        print(chord)
         return chord 
 
     @staticmethod
@@ -142,10 +159,11 @@ class Chord:
 def main():
     """
     Run the program, grabbing the first command line argument for the file
-    to detect the note of and printing the predicted note.
+    to detect the chord of and printing the prediction.
     """
     filename = sys.argv[1]
     r = Chord(filename)
+    print(r)
 
 
 if  __name__ =='__main__':
