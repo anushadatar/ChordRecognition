@@ -19,7 +19,13 @@ class Chord:
     """
     Create a chord object with a list of the three largest frequencies,
 
+    A chord is made up of at least three distinct notes: while it seems
+    reasonable to assume that the three discrete frequencies could be
+    extracted by means of the fourier transform for straightforward chord
+    identification, this is not the case. For that reason, a training
+    set is necessary to tune noise consideration parameters.
     """
+
     def __init__(self, filename):
         """
         Initalizes chord object and attempts detection as well.
@@ -38,8 +44,7 @@ class Chord:
         self.frame_rate = self.waveform.getframerate()
         # List of most common frequencies.
         self.frequency_list = self.detect_frequency()
-        self.chord = self.detect_frequency()
-       # self.chord = self.detect_chord()
+        self.chord = self.detect_chord()
         
     def __str__(self):
         """
@@ -49,10 +54,11 @@ class Chord:
         return self.chord
 
 
-    def detect_frequency(self):
+    def detect_frequency(self, num_notes=3):
         """
+        Detects three most common frequencies in the chord. 
         """
-        #### We want to average the peaks to find the best possible value.
+        #### We average individual peaks to facilitate accurate extraction.
         # Create a list of the detected frequencies.
         frequency_list = []
         # Create a list of integers, useful to find the mode.
@@ -95,33 +101,26 @@ class Chord:
         
         #### Grab the average of the peaks.
         chord = []
-        for i in range(3):
+        for i in range(num_notes):
             frequency = scipy.stats.mode(frequency_int_list)
             chord.append(frequency[0])
             frequency_int_list = [x for x in frequency_int_list if x != chord[i]]
         
-        #### For some reason, it won't let me do this in one step. At least
-        #### it amortizes.
-        
-        for i in chord:
-            i = i[0]
-        
-        print(chord)
         return chord
 
     def detect_chord(self):
         """
-        Uses chord frequency list and KMeans to determine value of a chord. 
+        Uses chord frequency list and KNN to determine value of a chord. 
         """
-        # Manually copied in training data samples instead of generating
-        # values for the sake of runtime. Fixing this is a prety major 
-        # TODO but is not a problem until more data has been acquired.
-        # TODO Add training data and training vector specs...        
         distances = {}
-        for i in range(len(train)):
+        for i in range(len(labels)):
             distances[labels[i]] = \
-                      euclidean_distance(freqs[i], self.chord_list, len(freqs[i]))
-        return distances
+                  Chord.euclidean_distance(freqs[i], self.frequency_list, len(freqs[i]))
+       
+
+        chord = min(distances.items(), key=lambda x: x[1])
+        print(chord)
+        return chord 
 
     @staticmethod
     def euclidean_distance(a, b, l):
